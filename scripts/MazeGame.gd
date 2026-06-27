@@ -608,12 +608,18 @@ func _input(event):
 
 	if event is InputEventKey and event.pressed and not game_over and not paused:
 		match event.keycode:
-			KEY_1: use_item(0)
-			KEY_2: use_item(1)
-			KEY_3: use_item(2)
-			KEY_4: use_item(3)
-			KEY_5: use_item(4)
-			KEY_6: use_item(5)
+		KEY_1:
+				use_item(0)
+			KEY_2:
+				use_item(1)
+			KEY_3:
+				use_item(2)
+			KEY_4:
+				use_item(3)
+			KEY_5:
+				use_item(4)
+			KEY_6:
+				use_item(5)
 			KEY_E:
 				if is_multi and peer_pos != Vector2.ZERO:
 					player_pos = peer_pos

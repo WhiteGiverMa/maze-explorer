@@ -45,11 +45,16 @@ func _draw():
 		if explored[iy][ix]:
 			var ic: Color
 			match item["type"]:
-				0: ic = Color.CYAN
-				1: ic = Color.GREEN
-				2: ic = Color.RED
-				3: ic = Color.MAGENTA
-				4: ic = Color.YELLOW
+				0:
+					ic = Color.CYAN
+				1:
+					ic = Color.GREEN
+				2:
+					ic = Color.RED
+				3:
+					ic = Color.MAGENTA
+				4:
+					ic = Color.YELLOW
 			draw_circle(Vector2(ix * s + s/2, iy * s + s/2), max(1.5, s * 0.3), ic)
 	var px = player_pos.x / cell_sz * s
 	var py = player_pos.y / cell_sz * s
