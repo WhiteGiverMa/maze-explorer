@@ -41,6 +41,14 @@ text = "按N改名"
 horizontal_alignment = 2
 theme_override_font_sizes/font_size = 11
 
+[node name="SettingsBtn" type="Button" parent="UI"]
+offset_left = 1820
+offset_top = 80
+offset_right = 1900
+offset_bottom = 108
+text = "⚙"
+theme_override_font_sizes/font_size = 14
+
 [node name="Hint" type="Label" parent="UI"]
 offset_left = 660
 offset_top = 140
@@ -203,7 +211,7 @@ color = Color(0, 0, 0, 0.7)
 offset_left = 760
 offset_top = 390
 offset_right = 1160
-offset_bottom = 590
+offset_bottom = 650
 color = Color(0.06, 0.06, 0.14, 0.95)
 
 [node name="Title" type="Label" parent="UI/ExitPanel"]
@@ -219,14 +227,21 @@ theme_override_font_sizes/font_size = 26
 offset_left = 810
 offset_top = 470
 offset_right = 1110
-offset_bottom = 510
+offset_bottom = 508
 text = "退出游戏"
+
+[node name="SettingsBtn" type="Button" parent="UI/ExitPanel"]
+offset_left = 810
+offset_top = 518
+offset_right = 1110
+offset_bottom = 556
+text = "设置"
 
 [node name="ContinueBtn" type="Button" parent="UI/ExitPanel"]
 offset_left = 810
-offset_top = 530
+offset_top = 568
 offset_right = 1110
-offset_bottom = 570
+offset_bottom = 606
 text = "继续游戏"
 
 [node name="HelpPanel" type="Control" parent="UI"]

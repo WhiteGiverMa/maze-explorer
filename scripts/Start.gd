@@ -32,7 +32,9 @@ func _ready():
 	$UI/NickLabel.text = my_nickname
 	$UI/NickLabel.visible = true
 	$UI/ExitPanel/QuitBtn.pressed.connect(func(): get_tree().quit())
+	$UI/ExitPanel/SettingsBtn.pressed.connect(func(): show_exit = false; $UI/ExitPanel.visible = false; $UI/SettingsPanel.open())
 	$UI/ExitPanel/ContinueBtn.pressed.connect(func(): show_exit = false; $UI/ExitPanel.visible = false)
+	$UI/SettingsBtn.pressed.connect(func(): $UI/SettingsPanel.open())
 	$UI/NetworkPanel/SoloBtn.pressed.connect(func(): start_game(false, false, false))
 	$UI/NetworkPanel/CoopBtn.pressed.connect(func(): show_room_options(0))
 	$UI/NetworkPanel/RaceBtn.pressed.connect(func(): show_room_options(1))
