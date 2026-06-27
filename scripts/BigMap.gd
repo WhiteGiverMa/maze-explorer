@@ -41,7 +41,11 @@ func _draw():
 		var iy = int(item["pos"].y / cell_sz)
 		var ic: Color
 		match item["type"]:
-			0: ic = Color.CYAN; 1: ic = Color.GREEN; 2: ic = Color.RED; 3: ic = Color.MAGENTA; 4: ic = Color.YELLOW
+			0: ic = Color.CYAN
+			1: ic = Color.GREEN
+			2: ic = Color.RED
+			3: ic = Color.MAGENTA
+			4: ic = Color.YELLOW
 		draw_circle(Vector2(ox + ix * s + s/2, oy + iy * s + s/2), max(3.0, s * 0.5), ic)
 
 	var px = ox + player_pos.x / cell_sz * s

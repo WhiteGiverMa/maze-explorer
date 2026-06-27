@@ -17,7 +17,7 @@ var cheat_open: bool = false
 var noclip: bool = false
 var cheat_teleport: bool = false
 var items: Array = []
-var inventory: Array = [0, 0, 0, 0, 0]
+var inventory: Array = [0, 0, 0, 0, 0, 0]
 var speed_mult: float = 1.0
 var mouse_guide: bool = false
 var paused: bool = false
@@ -39,10 +39,12 @@ var flash_alpha: float = 0.0
 var flash_color: Color = Color.WHITE
 var particles: Array = []
 var exit_pulse: float = 0.0
-var camera_zoom_target: float = 1.8
 var loading: bool = false
+var ghost_mode: bool = false
+var ghost_timer: float = 0.0
+var last_valid_pos: Vector2 = Vector2.ZERO
 
-enum ItemType { SPEED = 0, TIME = 1, WALL_BREAK = 2, MINIMAP = 3, VISION_UP = 4 }
+enum ItemType { SPEED = 0, TIME = 1, WALL_BREAK = 2, MINIMAP = 3, VISION_UP = 4, GHOST = 5 }
 
 func _ready():
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -74,7 +76,7 @@ func generate_maze():
 	items.clear()
 	item_timers.clear()
 	speed_mult = 1.0
-	inventory = [0, 0, 0, 0, 0]
+	inventory = [0, 0, 0, 0, 0, 0]
 	particles.clear()
 	flash_alpha = 0.0
 	var sz = GameState.maze_size
@@ -141,7 +143,7 @@ func spawn_items():
 	items.clear()
 	if GameState.item_count <= 0:
 		return
-	var types = [ItemType.SPEED, ItemType.TIME, ItemType.WALL_BREAK, ItemType.MINIMAP, ItemType.VISION_UP]
+	var types = [ItemType.SPEED, ItemType.TIME, ItemType.WALL_BREAK, ItemType.MINIMAP, ItemType.VISION_UP, ItemType.GHOST]
 	var sz = GameState.maze_size
 	for i in range(GameState.item_count):
 		var t = types[randi() % types.size()]
@@ -250,6 +252,28 @@ func _process(delta):
 		return
 	if is_multi and not peer_connected:
 		return
+	if ghost_mode:
+		ghost_timer -= delta
+		if ghost_timer <= 0:
+			ghost_mode = false
+			if not is_passable(player_pos):
+				player_pos = last_valid_pos
+		else:
+			var dir = Input.get_vector("move_left", "move_right", "move_up", "move_down")
+			var spd = 260 * delta * speed_mult
+			var nx = player_pos.x + dir.x * spd
+			var ny = player_pos.y + dir.y * spd
+			if is_in_bounds(Vector2(nx, player_pos.y)):
+				player_pos.x = nx
+				last_valid_pos = player_pos
+			if is_in_bounds(Vector2(player_pos.x, ny)):
+				player_pos.y = ny
+				last_valid_pos = player_pos
+			$Camera2D.global_position = player_pos
+			check_items()
+			update_hud()
+			queue_redraw()
+		return
 	if game_over or show_map or paused or show_help:
 		if show_map:
 			$HUD/BigMap.queue_redraw()
@@ -259,8 +283,7 @@ func _process(delta):
 
 	flash_alpha = move_toward(flash_alpha, 0, delta * 3)
 	exit_pulse += delta * 3
-	camera_zoom_target = 2.0 if speed_mult > 1.5 else 1.8
-	$Camera2D.zoom = $Camera2D.zoom.lerp(Vector2(camera_zoom_target, camera_zoom_target), delta * 4)
+	$Camera2D.zoom = $Camera2D.zoom.lerp(Vector2(1.8, 1.8), delta * 4)
 	update_particles(delta)
 
 	time_left -= delta
@@ -321,6 +344,15 @@ func is_passable(pos: Vector2) -> bool:
 	var sz = GameState.maze_size
 	if noclip:
 		return true
+	var sz = GameState.maze_size
+	var cx = int(pos.x / CELL)
+	var cy = int(pos.y / CELL)
+	return cx >= 0 and cx < sz and cy >= 0 and cy < sz
+
+func _draw():
+	var sz = GameState.maze_size
+	if noclip:
+		return true
 	for c in [Vector2(pos.x-10, pos.y-10), Vector2(pos.x+10, pos.y-10), Vector2(pos.x-10, pos.y+10), Vector2(pos.x+10, pos.y+10)]:
 		var cx = int(c.x / CELL)
 		var cy = int(c.y / CELL)
@@ -329,6 +361,12 @@ func is_passable(pos: Vector2) -> bool:
 		if maze[cy][cx]:
 			return false
 	return true
+
+func is_in_bounds(pos: Vector2) -> bool:
+	var sz = GameState.maze_size
+	var cx = int(pos.x / CELL)
+	var cy = int(pos.y / CELL)
+	return cx >= 0 and cx < sz and cy >= 0 and cy < sz
 
 func _draw():
 	if maze.is_empty():
@@ -355,7 +393,7 @@ func _draw():
 	if abs(exit_pos.x - pcx) + abs(exit_pos.y - pcy) <= VIEW_RANGE + VIEW_RANGE_PERM:
 		draw_rect(Rect2(gx + 4, gy + 4, CELL - 8, CELL - 8), Color(0.15, 0.7, 0.25))
 
-	draw_circle(player_pos, 10, Color(0.3, 0.6, 1))
+	draw_circle(player_pos, 10, Color(0.2, 0.8, 1) if ghost_mode else Color(0.3, 0.6, 1))
 
 	if is_multi and peer_pos != Vector2.ZERO:
 		draw_circle(peer_pos, 10, Color(1, 0.4, 0.3))
@@ -400,6 +438,10 @@ func draw_item_shape(pos: Vector2, type: int):
 			draw_rect(Rect2(pos.x - s, pos.y - 4, s * 2, 8), Color(1, 0.95, 0.3))
 			draw_circle(Vector2(pos.x, pos.y), 3, Color(0.1, 0.1, 0.2))
 			draw_circle(Vector2(pos.x, pos.y), 1.5, Color.WHITE)
+		ItemType.GHOST:
+			draw_rect(Rect2(pos.x - s, pos.y - 2, s * 2, 4), Color(0.6, 0.7, 1))
+			draw_rect(Rect2(pos.x - 2, pos.y - 5, 4, 3), Color(0.4, 0.5, 0.9))
+			draw_rect(Rect2(pos.x - s + 1, pos.y - 3, 3, 2), Color(0.5, 0.6, 1))
 
 func update_hud():
 	var mins = int(time_left / 60)
@@ -408,7 +450,7 @@ func update_hud():
 	if time_left < 60:
 		$HUD/Timer.add_theme_color_override("font_color", Color.RED)
 
-	var inv_text = "[1]⚡%d [2]⌛%d [3]🔨%d [4]🍀%d [5]👁%d" % [inventory[0], inventory[1], inventory[2], inventory[3], inventory[4]]
+	var inv_text = "[1]⚡%d [2]⌛%d [3]🔨%d [4]🍀%d [5]👁%d [6]✈%d" % [inventory[0], inventory[1], inventory[2], inventory[3], inventory[4], inventory[5]]
 	$HUD/Inventory.text = inv_text
 
 	if game_over:
@@ -450,12 +492,8 @@ func update_timers(delta):
 	for key in item_timers.keys():
 		item_timers[key] -= delta
 		if item_timers[key] <= 0:
-			match key:
-				"speed": speed_mult = 1.0
-				"minimap":
-					for y in range(GameState.maze_size):
-						for x in range(GameState.maze_size):
-							explored[y][x] = false
+			if key == "speed":
+				speed_mult = 1.0
 			item_timers.erase(key)
 
 func break_walls_near_player():
@@ -579,6 +617,7 @@ func _input(event):
 			KEY_3: use_item(2)
 			KEY_4: use_item(3)
 			KEY_5: use_item(4)
+			KEY_6: use_item(5)
 			KEY_E:
 				if is_multi and peer_pos != Vector2.ZERO:
 					player_pos = peer_pos
@@ -594,6 +633,10 @@ func use_item(type: int):
 		elif type == ItemType.TIME:
 			if is_host:
 				time_left += 60
+		elif type == ItemType.GHOST:
+			ghost_mode = true
+			ghost_timer = 2.0
+			last_valid_pos = player_pos
 		else:
 			sync_item_use.rpc(type)
 	else:
@@ -605,6 +648,8 @@ func apply_item_effect(type: int):
 		ItemType.SPEED:
 			speed_mult = 2.0
 			item_timers["speed"] = 10.0
+		ItemType.TIME:
+			time_left += 60
 		ItemType.WALL_BREAK:
 			break_walls_near_player()
 		ItemType.MINIMAP:
@@ -614,6 +659,10 @@ func apply_item_effect(type: int):
 			item_timers["minimap"] = 5.0
 		ItemType.VISION_UP:
 			VIEW_RANGE_PERM += 2
+		ItemType.GHOST:
+			ghost_mode = true
+			ghost_timer = 2.0
+			last_valid_pos = player_pos
 
 func move_to_click(screen_pos: Vector2):
 	if game_over or show_map:
@@ -720,7 +769,7 @@ func exec_cheat(code: String):
 	elif code == "shubiao":
 		mouse_guide = not mouse_guide
 	elif code == "daoju":
-		for i in range(5):
+		for i in range(6):
 			inventory[i] += 1
 		update_hud()
 	$HUD/CheatPanel/Input.release_focus()

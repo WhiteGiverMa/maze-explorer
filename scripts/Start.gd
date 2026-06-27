@@ -47,11 +47,6 @@ func _ready():
 	$UI/FriendPanel/CloseBtn.pressed.connect(func(): show_friends = false; $UI/FriendPanel.visible = false)
 	$UI/NickPanel/SetBtn.pressed.connect(set_nickname)
 	$UI/NickPanel/CloseBtn.pressed.connect(func(): show_nickname = false; $UI/NickPanel.visible = false)
-	$UI/ItemPanel/SpeedBtn.pressed.connect(func(): confirm_item(0))
-	$UI/ItemPanel/TimeBtn.pressed.connect(func(): confirm_item(1))
-	$UI/ItemPanel/WallBtn.pressed.connect(func(): confirm_item(2))
-	$UI/ItemPanel/MapBtn.pressed.connect(func(): confirm_item(3))
-	$UI/ItemPanel/VisionBtn.pressed.connect(func(): confirm_item(4))
 	for i in 3:
 		var row = $UI/Rows.get_child(i)
 		row.gui_input.connect(_on_row_click.bind(i))
