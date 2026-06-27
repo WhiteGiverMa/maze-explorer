@@ -127,6 +127,20 @@ func _input(event):
 			save_display_and_close()
 		elif event.is_action_pressed("ui_accept"):
 			save_display_and_close()
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			var mp = event.global_position
+			if _in_rect(mp, 580, 615, 380, 420):
+				display_preset_idx = wrapi(display_preset_idx - 1, 0, display_presets.size())
+				update_display_panel()
+			elif _in_rect(mp, 1305, 1340, 380, 420):
+				display_preset_idx = wrapi(display_preset_idx + 1, 0, display_presets.size())
+				update_display_panel()
+			elif _in_rect(mp, 580, 615, 460, 500):
+				display_mode_idx = wrapi(display_mode_idx - 1, 0, display_mode_names.size())
+				update_display_panel()
+			elif _in_rect(mp, 1305, 1340, 460, 500):
+				display_mode_idx = wrapi(display_mode_idx + 1, 0, display_mode_names.size())
+				update_display_panel()
 		elif event.is_action_pressed("move_left"):
 			display_preset_idx = wrapi(display_preset_idx - 1, 0, display_presets.size())
 			update_display_panel()
@@ -209,13 +223,20 @@ func create_room():
 	NetworkManager.start_host()
 	$UI/RoomPanel/RoomCode.text = room_code
 	$UI/RoomPanel/RoomCode.visible = true
-	$UI/RoomPanel/IPLabel.text = my_nickname + "  |  IP: " + NetworkManager.get_local_ip()
+	$UI/RoomPanel/IPLabel.text = my_nickname + "  |  局域网IP: " + NetworkManager.get_local_ip() + "\n正在尝试 UPnP 端口映射..."
 	$UI/RoomPanel/IPLabel.visible = true
 	$UI/RoomPanel/StartBtn.visible = true
 	$UI/RoomPanel/CreateBtn.visible = false
 	$UI/RoomPanel/JoinBtn.visible = false
 	$UI/RoomPanel/IPInput.visible = false
 	$UI/RoomPanel/CodeJoin.visible = false
+	NetworkManager.upnp_status.connect(_on_upnp_status)
+
+func _on_upnp_status(success: bool, message: String):
+	if success:
+		$UI/RoomPanel/IPLabel.text = my_nickname + "  |  局域网IP: " + NetworkManager.get_local_ip() + "\n公网IP: " + message
+	else:
+		$UI/RoomPanel/IPLabel.text = my_nickname + "  |  局域网IP: " + NetworkManager.get_local_ip() + "\n" + message
 
 func join_room():
 	var ip = $UI/RoomPanel/IPInput.text
@@ -285,6 +306,9 @@ func save_display_and_close():
 	GameState.save_display_settings()
 	GameState.apply_display()
 	show_display = false; $UI/DisplayPanel.visible = false
+
+func _in_rect(p: Vector2, left: float, right: float, top: float, bottom: float) -> bool:
+	return p.x >= left and p.x <= right and p.y >= top and p.y <= bottom
 
 func start_game(multi: bool, as_host: bool, is_race: bool):
 	GameState.mode = selected

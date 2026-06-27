@@ -43,6 +43,16 @@ var loading: bool = false
 var ghost_mode: bool = false
 var ghost_timer: float = 0.0
 var last_valid_pos: Vector2 = Vector2.ZERO
+var show_display: bool = false
+var display_presets = [
+	{"name": "1920x1080", "w": 1920, "h": 1080},
+	{"name": "1280x720",  "w": 1280, "h": 720},
+	{"name": "2560x1440", "w": 2560, "h": 1440},
+	{"name": "3840x2160", "w": 3840, "h": 2160},
+]
+var display_mode_names = ["窗口", "窗口化全屏", "全屏"]
+var display_preset_idx = 0
+var display_mode_idx = 2
 
 enum ItemType { SPEED = 0, TIME = 1, WALL_BREAK = 2, MINIMAP = 3, VISION_UP = 4, GHOST = 5 }
 
@@ -69,7 +79,7 @@ func _ready():
 	$HUD/PauseMenu.visible = false
 	$HUD/HelpPanel.visible = false
 	$HUD/PauseMenu/RestartBtn.pressed.connect(func(): get_tree().reload_current_scene())
-	$HUD/PauseMenu/MenuBtn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Start.tscn"))
+	$HUD/PauseMenu/MenuBtn.pressed.connect(func(): NetworkManager.stop(); get_tree().change_scene_to_file("res://scenes/Start.tscn"))
 
 func generate_maze():
 	VIEW_RANGE_PERM = 0
@@ -574,6 +584,43 @@ func _input(event):
 		$HUD/HelpPanel.visible = true
 		return
 
+	if event is InputEventKey and event.pressed and event.keycode == KEY_TAB:
+		open_display_panel()
+		return
+
+	if show_display:
+		if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_TAB):
+			save_display_and_close()
+		elif event.is_action_pressed("ui_accept"):
+			save_display_and_close()
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			var mp = event.global_position
+			if _in_rect(mp, 580, 615, 380, 420):
+				display_preset_idx = wrapi(display_preset_idx - 1, 0, display_presets.size())
+				update_display_panel()
+			elif _in_rect(mp, 1305, 1340, 380, 420):
+				display_preset_idx = wrapi(display_preset_idx + 1, 0, display_presets.size())
+				update_display_panel()
+			elif _in_rect(mp, 580, 615, 460, 500):
+				display_mode_idx = wrapi(display_mode_idx - 1, 0, display_mode_names.size())
+				update_display_panel()
+			elif _in_rect(mp, 1305, 1340, 460, 500):
+				display_mode_idx = wrapi(display_mode_idx + 1, 0, display_mode_names.size())
+				update_display_panel()
+		elif event.is_action_pressed("move_left"):
+			display_preset_idx = wrapi(display_preset_idx - 1, 0, display_presets.size())
+			update_display_panel()
+		elif event.is_action_pressed("move_right"):
+			display_preset_idx = wrapi(display_preset_idx + 1, 0, display_presets.size())
+			update_display_panel()
+		elif event.is_action_pressed("move_up"):
+			display_mode_idx = wrapi(display_mode_idx - 1, 0, display_mode_names.size())
+			update_display_panel()
+		elif event.is_action_pressed("move_down"):
+			display_mode_idx = wrapi(display_mode_idx + 1, 0, display_mode_names.size())
+			update_display_panel()
+		return
+
 	if show_map:
 		if event.is_action_pressed("ui_cancel"):
 			show_map = false
@@ -599,6 +646,7 @@ func _input(event):
 			move_to_click(event.global_position)
 
 	if event.is_action_pressed("ui_accept") and game_over:
+		NetworkManager.stop()
 		get_tree().change_scene_to_file("res://scenes/Start.tscn")
 
 	if event is InputEventKey and event.pressed and not game_over and not paused:
@@ -770,3 +818,35 @@ func exec_cheat(code: String):
 			inventory[i] += 1
 		update_hud()
 	$HUD/CheatPanel/Input.release_focus()
+
+func open_display_panel():
+	display_preset_idx = 0
+	display_mode_idx = 2
+	for i in range(display_presets.size()):
+		if display_presets[i]["w"] == GameState.display_width and display_presets[i]["h"] == GameState.display_height:
+			display_preset_idx = i
+			break
+	display_mode_idx = GameState.window_mode
+	if display_mode_idx < 0 or display_mode_idx >= display_mode_names.size():
+		display_mode_idx = 2
+	show_display = true
+	$HUD/DisplayPanel.visible = true
+	update_display_panel()
+
+func update_display_panel():
+	var p = display_presets[display_preset_idx]
+	$HUD/DisplayPanel/ResLabel.text = "分辨率: " + p["name"]
+	$HUD/DisplayPanel/ModeLabel.text = "模式: " + display_mode_names[display_mode_idx]
+
+func save_display_and_close():
+	var p = display_presets[display_preset_idx]
+	GameState.display_width = p["w"]
+	GameState.display_height = p["h"]
+	GameState.window_mode = display_mode_idx
+	GameState.save_display_settings()
+	GameState.apply_display()
+	show_display = false
+	$HUD/DisplayPanel.visible = false
+
+func _in_rect(p: Vector2, left: float, right: float, top: float, bottom: float) -> bool:
+	return p.x >= left and p.x <= right and p.y >= top and p.y <= bottom
