@@ -168,11 +168,6 @@ theme_override_font_sizes/font_size = 15
 visible = false
 script = ExtResource("3_bigmap")
 
-[node name="MapBG" type="ColorRect" parent="HUD/BigMap"]
-offset_right = 1920
-offset_bottom = 1080
-color = Color(0.8, 0.78, 0.73, 1)
-
 [node name="CheatPanel" type="Control" parent="HUD"]
 visible = false
 

@@ -24,28 +24,42 @@ func _draw():
 	var s = min(vs.x / float(maze_sz), vs.y / float(maze_sz))
 	var ox = (vs.x - maze_sz * s) / 2.0
 	var oy = (vs.y - maze_sz * s) / 2.0
+	# 画背景（删除场景里会盖住 _draw 的 MapBG ColorRect 子节点，改由我们自己先画）
+	draw_rect(Rect2(0, 0, vs.x, vs.y), Color(0.18, 0.16, 0.14, 1))
 
 	for y in range(maze_sz):
 		for x in range(maze_sz):
 			var rx = ox + x * s
 			var ry = oy + y * s
-			if maze_ref[y][x]:
-				draw_rect(Rect2(rx, ry, s, s), Color(0.1, 0.12, 0.3, 1) if explored[y][x] else Color(0.35, 0.38, 0.55, 1))
+			if not explored[y][x]:
+				# 未探索：黑色迷雾
+				draw_rect(Rect2(rx, ry, s, s), Color(0, 0, 0, 1))
+			elif maze_ref[y][x]:
+				# 墙·已探索
+				draw_rect(Rect2(rx, ry, s, s), Color(0.1, 0.12, 0.3, 1))
 			else:
-				draw_rect(Rect2(rx, ry, s, s), Color(0.65, 0.6, 0.5, 1) if explored[y][x] else Color(0.8, 0.78, 0.73, 1))
+				# 通路·已探索
+				draw_rect(Rect2(rx, ry, s, s), Color(0.72, 0.66, 0.52, 1))
 
 	draw_rect(Rect2(ox + exit_cell.x * s, oy + exit_cell.y * s, s, s), Color(0.2, 0.9, 0.3, 1))
 
 	for item in items_ref:
 		var ix = int(item["pos"].x / cell_sz)
 		var iy = int(item["pos"].y / cell_sz)
+		if not explored[iy][ix]:
+			continue
 		var ic: Color
 		match item["type"]:
-			0: ic = Color.CYAN
-			1: ic = Color.GREEN
-			2: ic = Color.RED
-			3: ic = Color.MAGENTA
-			4: ic = Color.YELLOW
+			0:
+				ic = Color.CYAN
+			1:
+				ic = Color.GREEN
+			2:
+				ic = Color.RED
+			3:
+				ic = Color.MAGENTA
+			4:
+				ic = Color.YELLOW
 		draw_circle(Vector2(ox + ix * s + s/2, oy + iy * s + s/2), max(3.0, s * 0.5), ic)
 
 	var px = ox + player_pos.x / cell_sz * s
