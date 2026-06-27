@@ -23,6 +23,32 @@ static var fog_boost: float = 0.0
 static var magnet_active: bool = false
 static var score_mult: float = 1.0
 
+# 画面设置
+static var display_width: int = 1920
+static var display_height: int = 1080
+static var window_mode: int = 3
+
+static func load_display_settings():
+	var file = FileAccess.open("user://display_settings.json", FileAccess.READ)
+	if not file:
+		return
+	var data = JSON.parse_string(file.get_as_text())
+	file.close()
+	if data != null:
+		display_width = data.get("width", 1920)
+		display_height = data.get("height", 1080)
+		window_mode = data.get("mode", 3)
+
+static func save_display_settings():
+	var data = {"width": display_width, "height": display_height, "mode": window_mode}
+	var file = FileAccess.open("user://display_settings.json", FileAccess.WRITE)
+	file.store_string(JSON.stringify(data))
+	file.close()
+
+static func apply_display():
+	DisplayServer.window_set_size(Vector2i(display_width, display_height))
+	DisplayServer.window_set_mode(window_mode)
+
 static func reset():
 	score = 0
 	player_collected = 0

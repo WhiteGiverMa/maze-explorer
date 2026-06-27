@@ -45,7 +45,7 @@ offset_left = 660
 offset_top = 140
 offset_right = 1260
 offset_bottom = 180
-text = "↑↓ 选择模式  Enter 开始  U 排行榜  V 说明"
+text = "↑↓ 选择模式  Enter 开始  U 排行榜  V 说明  Tab 画面"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 18
 
@@ -551,3 +551,58 @@ offset_top = 530
 offset_right = 1060
 offset_bottom = 570
 text = "取消"
+
+[node name="DisplayPanel" type="Control" parent="UI"]
+visible = false
+
+[node name="DisplayBG" type="ColorRect" parent="UI/DisplayPanel"]
+offset_right = 1920
+offset_bottom = 1080
+color = Color(0, 0, 0, 0.7)
+
+[node name="Panel" type="ColorRect" parent="UI/DisplayPanel"]
+offset_left = 560
+offset_top = 240
+offset_right = 1360
+offset_bottom = 740
+color = Color(0.06, 0.06, 0.14, 0.95)
+
+[node name="Title" type="Label" parent="UI/DisplayPanel"]
+offset_left = 610
+offset_top = 270
+offset_right = 1310
+offset_bottom = 320
+text = "画面设置"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+[node name="ResLabel" type="Label" parent="UI/DisplayPanel"]
+offset_left = 620
+offset_top = 380
+offset_right = 1300
+offset_bottom = 420
+text = "分辨率: 1920x1080"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+
+[node name="ModeLabel" type="Label" parent="UI/DisplayPanel"]
+offset_left = 620
+offset_top = 460
+offset_right = 1300
+offset_bottom = 500
+text = "模式: 全屏"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+
+[node name="Hint" type="Label" parent="UI/DisplayPanel"]
+offset_left = 560
+offset_top = 580
+offset_right = 1360
+offset_bottom = 680
+text = "← → 切换分辨率
+↑ ↓ 切换模式
+
+Enter 保存并应用
+Tab / Esc 返回"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
