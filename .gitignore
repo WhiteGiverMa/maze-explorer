@@ -26,3 +26,4 @@ docs/draft/
 
 # MCP interaction server (auto-copied by godot-mcp at runtime)
 mcp_interaction_server.gd
+opencode.json
