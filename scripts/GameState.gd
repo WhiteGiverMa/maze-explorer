@@ -8,6 +8,10 @@ static var treasure_count: int = 5
 static var coin_count: int = 50
 static var item_count: int = 0
 static var enemy_count: int = 0
+static var is_multi: bool = false
+static var is_host: bool = false
+static var is_race: bool = false
+static var join_ip: String = ""
 
 static var score: int = 0
 static var player_collected: int = 0

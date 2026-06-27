@@ -9,6 +9,10 @@ config/version="0.1.0"
 run/main_scene="res://scenes/Start.tscn"
 config/features=PackedStringArray("4.7")
 
+[autoload]
+
+NetworkManager="*res://scripts/NetworkManager.gd"
+
 [display]
 
 window/size/viewport_width=1920

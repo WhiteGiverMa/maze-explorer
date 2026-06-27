@@ -24,12 +24,31 @@ var paused: bool = false
 var show_help: bool = false
 var item_timers: Dictionary = {}
 var VIEW_RANGE_PERM: int = 0
+var peer_pos: Vector2 = Vector2.ZERO
+var sync_timer: float = 0.0
+var is_multi: bool = false
+var is_host: bool = false
+var is_race: bool = false
+var maze_ready: bool = true
+var time_sync_timer: float = 0.0
+var disconnected: bool = false
 
 enum ItemType { SPEED = 0, TIME = 1, WALL_BREAK = 2, MINIMAP = 3, VISION_UP = 4 }
 
 func _ready():
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
-	generate_maze()
+	is_multi = GameState.is_multi
+	is_host = GameState.is_host
+	is_race = GameState.is_race
+	if is_multi:
+		multiplayer.peer_connected.connect(_on_peer_connected)
+		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	if is_multi and not is_host:
+		maze_ready = false
+		NetworkManager.start_client(GameState.join_ip)
+		await get_tree().create_timer(0.5).timeout
+	else:
+		generate_maze()
 	player_pos = Vector2(spawn_pos.x * CELL + CELL/2, spawn_pos.y * CELL + CELL/2)
 	$Camera2D.global_position = player_pos
 	$HUD/PauseMenu.visible = false
@@ -113,7 +132,82 @@ func spawn_items():
 						items.append({"pos": Vector2(cx * CELL + CELL/2, cy * CELL + CELL/2), "type": t})
 						break
 
+func _on_peer_connected(id: int):
+	if is_host:
+		rcv_maze.rpc_id(id, maze, exit_pos.x, exit_pos.y, spawn_pos.x, spawn_pos.y, GameState.maze_size)
+		send_items.rpc_id(id, items)
+
+@rpc("authority", "reliable")
+func rcv_maze(mz: Array, ex: int, ey: int, spx: int, spy: int, sz: int):
+	if not is_host:
+		maze = mz
+		exit_pos = Vector2i(ex, ey)
+		spawn_pos = Vector2i(spx, spy)
+		GameState.maze_size = sz
+		explored.clear()
+		for y in range(sz):
+			explored.append([])
+			for x in range(sz):
+				explored[y].append(false)
+		maze_ready = true
+		player_pos = Vector2(spawn_pos.x * CELL + CELL/2, spawn_pos.y * CELL + CELL/2)
+
+@rpc("any_peer", "unreliable_ordered")
+func sync_position(pos: Vector2):
+	var sender = multiplayer.get_remote_sender_id()
+	if sender == 1 and not is_host:
+		pass
+	peer_pos = pos
+
+@rpc("authority")
+func send_items(itms: Array):
+	if not is_host:
+		items = itms
+
+@rpc("authority", "reliable")
+func sync_time(tl: float):
+	if not is_host:
+		time_left = tl
+
+@rpc("any_peer", "reliable")
+func sync_item_use(type: int):
+	apply_item_effect(type)
+	update_hud()
+
+@rpc("any_peer", "reliable")
+func sync_wall_break(pos: Vector2):
+	var old = player_pos
+	player_pos = pos
+	break_walls_near_player()
+	player_pos = old
+
+@rpc("any_peer", "reliable")
+func sync_item_remove(idx: int):
+	if idx >= 0 and idx < items.size():
+		items.remove_at(idx)
+
+@rpc("any_peer", "reliable")
+func sync_race_win():
+	game_over = true
+	if multiplayer.get_remote_sender_id() == 0:
+		won = true
+	else:
+		won = false
+	update_hud()
+
+func _on_peer_disconnected(_id: int):
+	disconnected = true
+	game_over = true
+	$HUD/GameOver.visible = true
+	$HUD/GameOver/Title.text = "队友断开连接"
+	$HUD/GameOver/Score.text = ""
+	$HUD/GameOver/Hint.text = "按 Enter 返回主菜单"
+
 func _process(delta):
+	if disconnected:
+		return
+	if not maze_ready:
+		return
 	if game_over or show_map or paused or show_help:
 		if show_map:
 			$HUD/BigMap.queue_redraw()
@@ -153,11 +247,25 @@ func _process(delta):
 	var pcx = int(player_pos.x / CELL)
 	var pcy = int(player_pos.y / CELL)
 	if pcx == exit_pos.x and pcy == exit_pos.y:
-		game_over = true
-		won = true
+		if is_multi and is_race:
+			sync_race_win.rpc()
+		else:
+			game_over = true
+			won = true
 
 	update_hud()
 	queue_redraw()
+
+	if is_multi:
+		sync_timer += delta
+		if sync_timer > 0.05:
+			sync_timer = 0.0
+			sync_position.rpc(player_pos)
+		if is_host:
+			time_sync_timer += delta
+			if time_sync_timer > 1.0:
+				time_sync_timer = 0.0
+				sync_time.rpc(time_left)
 
 func is_passable(pos: Vector2) -> bool:
 	var sz = GameState.maze_size
@@ -198,6 +306,9 @@ func _draw():
 		draw_rect(Rect2(gx + 4, gy + 4, CELL - 8, CELL - 8), Color(0.15, 0.7, 0.25))
 
 	draw_circle(player_pos, 10, Color(0.3, 0.6, 1))
+
+	if is_multi and peer_pos != Vector2.ZERO:
+		draw_circle(peer_pos, 10, Color(1, 0.4, 0.3))
 
 	for item in items:
 		var ix = int(item["pos"].x / CELL)
@@ -242,7 +353,13 @@ func update_hud():
 
 	if game_over:
 		$HUD/GameOver.visible = true
-		if won:
+		if is_race:
+			if won:
+				$HUD/GameOver/Title.text = "你赢了!"
+			else:
+				$HUD/GameOver/Title.text = "你输了!"
+			$HUD/GameOver/Score.text = ""
+		elif won:
 			$HUD/GameOver/Title.text = "恭喜通关!"
 			$HUD/GameOver/Score.text = "得分: %d" % (int(time_left) * 10)
 		else:
@@ -255,6 +372,8 @@ func check_items():
 		if player_pos.distance_to(item["pos"]) < 20:
 			to_remove.append(i)
 			inventory[item["type"]] += 1
+			if is_multi:
+				sync_item_remove.rpc(i)
 			update_hud()
 	for i in range(to_remove.size() - 1, -1, -1):
 		items.remove_at(to_remove[i])
@@ -358,17 +477,32 @@ func _input(event):
 			KEY_3: use_item(2)
 			KEY_4: use_item(3)
 			KEY_5: use_item(4)
+			KEY_E:
+				if is_multi and peer_pos != Vector2.ZERO:
+					player_pos = peer_pos
+					path.clear()
 
 func use_item(type: int):
 	if inventory[type] <= 0:
 		return
 	inventory[type] -= 1
+	if is_multi:
+		if type == ItemType.WALL_BREAK:
+			sync_wall_break.rpc(player_pos)
+		elif type == ItemType.TIME:
+			if is_host:
+				time_left += 60
+		else:
+			sync_item_use.rpc(type)
+	else:
+		apply_item_effect(type)
+	update_hud()
+
+func apply_item_effect(type: int):
 	match type:
 		ItemType.SPEED:
 			speed_mult = 2.0
 			item_timers["speed"] = 10.0
-		ItemType.TIME:
-			time_left += 60
 		ItemType.WALL_BREAK:
 			break_walls_near_player()
 		ItemType.MINIMAP:
@@ -378,7 +512,6 @@ func use_item(type: int):
 			item_timers["minimap"] = 5.0
 		ItemType.VISION_UP:
 			VIEW_RANGE_PERM += 2
-	update_hud()
 
 func move_to_click(screen_pos: Vector2):
 	if game_over or show_map:

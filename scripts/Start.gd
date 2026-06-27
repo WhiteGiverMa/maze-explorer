@@ -9,14 +9,20 @@ var selected = 0
 var show_lb = false
 var show_exit = false
 var show_help = false
+var show_network = false
 
 func _ready():
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	$UI/BG.size = DisplayServer.screen_get_size()
 	$UI/ExitPanel.visible = false
 	$UI/HelpPanel.visible = false
+	$UI/NetworkPanel.visible = false
 	$UI/ExitPanel/QuitBtn.pressed.connect(func(): get_tree().quit())
 	$UI/ExitPanel/ContinueBtn.pressed.connect(func(): show_exit = false; $UI/ExitPanel.visible = false)
+	$UI/NetworkPanel/SoloBtn.pressed.connect(start_solo)
+	$UI/NetworkPanel/CoopBtn.pressed.connect(start_coop)
+	$UI/NetworkPanel/RaceBtn.pressed.connect(start_race)
+	$UI/NetworkPanel/JoinBtn.pressed.connect(start_join)
 	for i in 3:
 		var row = $UI/Rows.get_child(i)
 		row.gui_input.connect(_on_row_click.bind(i))
@@ -48,7 +54,7 @@ func _on_row_click(event: InputEvent, idx: int):
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if selected == idx:
-			start_game()
+			show_network_panel()
 		else:
 			selected = idx
 			update_ui()
@@ -64,6 +70,12 @@ func _input(event):
 		if event.is_action_pressed("ui_cancel"):
 			show_exit = false
 			$UI/ExitPanel.visible = false
+		return
+
+	if show_network:
+		if event.is_action_pressed("ui_cancel"):
+			show_network = false
+			$UI/NetworkPanel.visible = false
 		return
 
 	if show_lb:
@@ -85,7 +97,7 @@ func _input(event):
 		selected = wrapi(selected + 1, 0, 3)
 		update_ui()
 	elif event.is_action_pressed("ui_accept"):
-		start_game()
+		show_network_panel()
 	elif event.is_action_pressed("p1_ultimate"):
 		show_lb = true
 		update_ui()
@@ -96,7 +108,27 @@ func _input(event):
 		show_help = true
 		$UI/HelpPanel.visible = true
 
-func start_game():
+func show_network_panel():
+	show_network = true
+	$UI/NetworkPanel.visible = true
+
+func start_solo():
+	start_game(false, false, false)
+
+func start_coop():
+	NetworkManager.start_host()
+	start_game(true, true, false)
+
+func start_race():
+	NetworkManager.start_host()
+	start_game(true, true, true)
+
+func start_join():
+	var ip = $UI/NetworkPanel/IPInput.text
+	GameState.join_ip = ip
+	start_game(true, false, false)
+
+func start_game(multi: bool, as_host: bool, is_race: bool):
 	GameState.mode = selected
 	GameState.maze_size = modes[selected]["size"]
 	GameState.time_limit = modes[selected]["time"]
@@ -104,4 +136,7 @@ func start_game():
 	GameState.enemy_count = modes[selected]["enemies"]
 	GameState.treasure_count = 0
 	GameState.coin_count = 0
+	GameState.is_multi = multi
+	GameState.is_host = as_host
+	GameState.is_race = is_race
 	get_tree().change_scene_to_file("res://scenes/MazeGame.tscn")
