@@ -52,9 +52,9 @@ static func save_display_settings():
 	file.close()
 
 static func apply_display():
-	DisplayServer.window_set_size(Vector2i(display_width, display_height))
 	if DisplayServer.window_get_mode() != window_mode:
 		DisplayServer.window_set_mode(window_mode)
+	DisplayServer.window_set_size(Vector2i(display_width, display_height))
 
 static func reset():
 	score = 0
